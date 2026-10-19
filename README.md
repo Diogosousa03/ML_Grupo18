@@ -49,3 +49,4 @@ Put clientes.csv and train.csv in the data/ folder.
 Open the notebook with Jupyter and run it from top to bottom.
 Authors
 <!-- TODO: names, course / institution and date -->
+Nova IMS 
