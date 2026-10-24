@@ -1,0 +1,10 @@
+# Python bytecode, created whenever a notebook imports preprocessing.py
+__pycache__/
+*.pyc
+
+# Jupyter's automatic checkpoint copies
+.ipynb_checkpoints/
+
+# Operating system files (macOS and Windows)
+.DS_Store
+Thumbs.db
