@@ -60,6 +60,7 @@ def columns_type(data):
 # -------------------------------------------------------------------------
 # Fill missing function
 # -------------------------------------------------------------------------
+
 def fill_missing(train, test, plan):
     """Fill every missing value with imputers fitted on `train` alone.
 
@@ -85,7 +86,10 @@ def fill_missing(train, test, plan):
         train[columns], test[columns] = filled
     return train, test
 
-#PAARA REMOVER
+
+
+
+
 def fold_matrices(train, test, recipe):
     """Return (A_train, A_test, names) for ONE split, every step fitted on `train`."""
     numeric, categorical = recipe["numeric"], recipe["categorical"]
@@ -97,13 +101,21 @@ def fold_matrices(train, test, recipe):
     for column in recipe["log1p"]:
         train[column], test[column] = np.log1p(train[column]), np.log1p(test[column])
 
-    # 3. Encode: categories learned from the training rows only;
+    # 3. Group rare levels: a level with fewer training rows than its minimum becomes "Other"
+    for column, minimum in recipe["rare"].items():
+        if column in categorical:
+            counts = train[column].value_counts()
+            frequent = counts[counts >= minimum].index
+            train[column] = train[column].where(train[column].isin(frequent), "Other")
+            test[column] = test[column].where(test[column].isin(frequent), "Other")
+
+    # 4. Encode: categories learned from the training rows only, first level dropped;
     #    a level seen only in validation becomes all zeros
-    encoder = OneHotEncoder(handle_unknown="ignore", sparse_output=False)
+    encoder = OneHotEncoder(handle_unknown="ignore", drop="first", sparse_output=False)
     cat_train = encoder.fit_transform(train[categorical].astype("string"))
     cat_test = encoder.transform(test[categorical].astype("string"))
 
-    # 4. Scale: mean and spread of the training rows only
+    # 5. Scale: mean and spread of the training rows only
     scaler = StandardScaler().fit(train[numeric])
     num_train, num_test = scaler.transform(train[numeric]), scaler.transform(test[numeric])
 
@@ -111,6 +123,9 @@ def fold_matrices(train, test, recipe):
     return (np.hstack([cat_train, num_train]),
             np.hstack([cat_test, num_test]),
             names)
+
+#PAARA REMOVER
+
 
 def purchase_dates(data):
     """Purchase date, rebuilt from its parts (train_2_5_1 no longer carries purchase_date)."""
