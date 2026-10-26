@@ -51,7 +51,6 @@ excluded = ["company_name", "address", "street", "postal_code", "random_noise"]
 
 def columns_type(data):
     features = [c for c in data.columns if c not in [target] + identifiers + excluded]
-    # Automatic separation between numerical and categorical variables
     numeric = [c for c in features if pd.api.types.is_numeric_dtype(data[c])]
     categorical = [c for c in features if c not in numeric]
     return numeric, categorical
@@ -70,12 +69,9 @@ def fill_missing(train, test, plan):
     """
     train, test = train.copy(), test.copy()
     for columns, imputer in plan:
-        # scikit-learn reads np.nan as a gap but not pd.NA, so every gap becomes np.nan
         blocks = [half[columns].astype(object).fillna(np.nan).infer_objects()
                   for half in (train, test)]
         if isinstance(imputer, (KNNImputer, IterativeImputer)):
-            # Both are sensitive to scale, so they work on standardised columns
-            # and their fills go back in the columns' own units
             scale = StandardScaler().fit(blocks[0])
             imputer.fit(scale.transform(blocks[0]))
             filled = [scale.inverse_transform(imputer.transform(scale.transform(block)))
@@ -94,14 +90,11 @@ def fold_matrices(train, test, recipe):
     """Return (A_train, A_test, names) for ONE split, every step fitted on `train`."""
     numeric, categorical = recipe["numeric"], recipe["categorical"]
 
-    # 1. Fill: imputers fitted on the training rows only
     train, test = fill_missing(train, test, recipe["fill"])
 
-    # 2. Outliers: log1p learns nothing, so it applies to both halves as is
     for column in recipe["log1p"]:
         train[column], test[column] = np.log1p(train[column]), np.log1p(test[column])
 
-    # 3. Group rare levels: a level with fewer training rows than its minimum becomes "Other"
     for column, minimum in recipe["rare"].items():
         if column in categorical:
             counts = train[column].value_counts()
@@ -109,13 +102,10 @@ def fold_matrices(train, test, recipe):
             train[column] = train[column].where(train[column].isin(frequent), "Other")
             test[column] = test[column].where(test[column].isin(frequent), "Other")
 
-    # 4. Encode: categories learned from the training rows only, first level dropped;
-    #    a level seen only in validation becomes all zeros
     encoder = OneHotEncoder(handle_unknown="ignore", drop="first", sparse_output=False)
     cat_train = encoder.fit_transform(train[categorical].astype("string"))
     cat_test = encoder.transform(test[categorical].astype("string"))
 
-    # 5. Scale: mean and spread of the training rows only
     scaler = StandardScaler().fit(train[numeric])
     num_train, num_test = scaler.transform(train[numeric]), scaler.transform(test[numeric])
 
@@ -124,7 +114,7 @@ def fold_matrices(train, test, recipe):
             np.hstack([cat_test, num_test]),
             names)
 
-#PAARA REMOVER
+
 
 
 def purchase_dates(data):
@@ -143,17 +133,14 @@ def temporal_splits(data, n_splits=10, gap_days=90, min_train=2000):
     hold row positions, for use with `data.iloc`.
     """
     dates = purchase_dates(data)
-    # Positions of the rows in date order; TimeSeriesSplit cuts this order into blocks
     order = np.argsort(dates.to_numpy(), kind="stable")
     gap = pd.Timedelta(days=gap_days)
 
     splits = []
     for train_block, validation_block in TimeSeriesSplit(n_splits=n_splits).split(order):
         train_rows, validation_rows = order[train_block], order[validation_block]
-        # Leave out the training purchases whose window reaches the validation block
         start = dates.iloc[validation_rows].min()
         train_rows = train_rows[(dates.iloc[train_rows] < start - gap).to_numpy()]
-        # The first blocks have too little history to train on
         if len(train_rows) >= min_train:
             splits.append((train_rows, validation_rows))
     return splits
@@ -182,12 +169,11 @@ def held_out_ap(frame, splits, recipe, select=None):
                     "kept": list(names[keep])})
     return pd.DataFrame(rows)
 
-## Não retirar 
+
 def paired_delta(scores, reference):
     """Mean split-by-split difference from `reference`, its SEM, wins and verdict."""
     delta = np.asarray(scores) - np.asarray(reference)
     sem = delta.std(ddof=1) / np.sqrt(len(delta))
-    # Two standard errors separate a difference from noise
     verdict = ("identical on every split" if not delta.any()
                else "inside the noise" if abs(delta.mean()) <= 2 * sem
                else "better" if delta.mean() > 0 else "worse")
