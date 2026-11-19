@@ -549,6 +549,8 @@ def encode_categorical_features(
     )
     return train_out, test_out
 
+
+
 DEFAULT_NON_FEATURE_COLS: Tuple[str, ...] = ("ID", "customer_id", "repeat_purchase_90d")
 
 
@@ -560,25 +562,26 @@ def scale_numeric_features(
     target_col: str = "repeat_purchase_90d",
 ) -> Tuple[pd.DataFrame, pd.DataFrame]:
     """Fit StandardScaler on `train` numeric features and transform both `train` and `test`."""
-    if numeric_cols is None:
-        excluded = set(non_feature_cols)
-        cols_to_scale = [
-            c
-            for c in train.select_dtypes(include=[np.number]).columns
-            if c not in excluded and set(train[c].dropna().unique()) - {0, 1, 0.0, 1.0}
-        ]
-    else:
-        cols_to_scale = [c for c in numeric_cols if c in train.columns]
+    excluded = set(non_feature_cols)
+    candidate_cols = (
+        train.select_dtypes(include=[np.number]).columns
+        if numeric_cols is None
+        else [c for c in numeric_cols if c in train.columns]
+    )
+
+    cols_to_scale = [
+        c
+        for c in candidate_cols
+        if c not in excluded and set(train[c].dropna().unique()) - {0, 1, 0.0, 1.0}
+    ]
 
     scaler = StandardScaler().fit(train[cols_to_scale])
 
     def _apply_scale(df: pd.DataFrame) -> pd.DataFrame:
-        scaled_part = pd.DataFrame(
-            scaler.transform(df[cols_to_scale]),
-            columns=cols_to_scale,
-            index=df.index,
-        )
-        return pd.concat([df.drop(columns=cols_to_scale), scaled_part], axis=1)
+        out = df.copy()
+        out[cols_to_scale] = out[cols_to_scale].astype(float)
+        out[cols_to_scale] = scaler.transform(out[cols_to_scale])
+        return out
 
     train_out = _apply_scale(train)
     test_out = _apply_scale(test)
