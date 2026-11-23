@@ -553,6 +553,13 @@ def encode_categorical_features(
 
 DEFAULT_NON_FEATURE_COLS: Tuple[str, ...] = ("ID", "customer_id", "repeat_purchase_90d")
 
+# Binary flags that must stay as 0/1 (never standardised)
+DEFAULT_BINARY_FLAGS: Tuple[str, ...] = (
+    "is_first_purchase",
+    "is_weekend",
+    "since_2015_or_earlier",
+)
+
 
 def scale_numeric_features(
     train: pd.DataFrame,
@@ -560,9 +567,15 @@ def scale_numeric_features(
     numeric_cols: Optional[Sequence[str]] = None,
     non_feature_cols: Sequence[str] = DEFAULT_NON_FEATURE_COLS,
     target_col: str = "repeat_purchase_90d",
+    binary_cols: Sequence[str] = DEFAULT_BINARY_FLAGS,
 ) -> Tuple[pd.DataFrame, pd.DataFrame]:
-    """Fit StandardScaler on `train` numeric features and transform both `train` and `test`."""
-    excluded = set(non_feature_cols)
+    """Fit StandardScaler on `train` numeric features and transform both `train` and `test`.
+
+    Columns that are already binary ({0, 1}) in `train` are NOT scaled: they stay as 0/1,
+    like the one-hot columns, so every binary variable shares the same scale.
+    """
+    # binary flags are always excluded from scaling, by name and by value
+    excluded = set(non_feature_cols) | set(binary_cols)
     candidate_cols = (
         train.select_dtypes(include=[np.number]).columns
         if numeric_cols is None
@@ -575,6 +588,9 @@ def scale_numeric_features(
         if c not in excluded and set(train[c].dropna().unique()) - {0, 1, 0.0, 1.0}
     ]
 
+    kept_binary = [c for c in binary_cols if c in train.columns]
+    print(f"Scaled: {len(cols_to_scale)} columns | kept as 0/1: {kept_binary}")
+
     scaler = StandardScaler().fit(train[cols_to_scale])
 
     def _apply_scale(df: pd.DataFrame) -> pd.DataFrame:
@@ -585,6 +601,12 @@ def scale_numeric_features(
 
     train_out = _apply_scale(train)
     test_out = _apply_scale(test)
+
+    # the binary flags must still be exactly 0/1 in both outputs
+    for col in binary_cols:
+        for name, df in (("train", train_out), ("test", test_out)):
+            if col in df.columns and not set(df[col].dropna().unique()) <= {0, 1}:
+                raise ValueError(f"{col} is not 0/1 in {name} (values: {sorted(df[col].unique())[:5]})")
 
     train_feats = list(train_out.columns.drop(target_col, errors="ignore"))
     test_feats = list(test_out.columns)

@@ -86,8 +86,18 @@ def fill_missing(train, test, plan):
 
 
 
+# Binary flags: they stay as 0/1 (never scaled), like the one-hot columns
+BINARY_FLAGS = ["is_first_purchase", "is_weekend", "since_2015_or_earlier"]
+
+
 def fold_matrices(train, test, recipe):
-    """Return (A_train, A_test, names) for ONE split, every step fitted on `train`."""
+    """Return (A_train, A_test, names) for ONE split, every step fitted on `train`.
+
+    Optional recipe keys (defaults reproduce the pre-processing notebook, 1.8):
+      "drop":         OneHotEncoder `drop` argument            (default "first")
+      "scaler":       scaler class, or None for no scaling      (default StandardScaler)
+      "scale_binary": also scale the 0/1 flags in BINARY_FLAGS  (default False)
+    """
     numeric, categorical = recipe["numeric"], recipe["categorical"]
 
     train, test = fill_missing(train, test, recipe["fill"])
@@ -102,14 +112,25 @@ def fold_matrices(train, test, recipe):
             train[column] = train[column].where(train[column].isin(frequent), "Other")
             test[column] = test[column].where(test[column].isin(frequent), "Other")
 
-    encoder = OneHotEncoder(handle_unknown="ignore", drop="first", sparse_output=False)
+    encoder = OneHotEncoder(handle_unknown="ignore", drop=recipe.get("drop", "first"),
+                            sparse_output=False)
     cat_train = encoder.fit_transform(train[categorical].astype("string"))
     cat_test = encoder.transform(test[categorical].astype("string"))
 
-    scaler = StandardScaler().fit(train[numeric])
-    num_train, num_test = scaler.transform(train[numeric]), scaler.transform(test[numeric])
+    # The 0/1 flags are left out of the scaling (unless the recipe asks for it)
+    keep01 = [] if recipe.get("scale_binary", False) else [c for c in numeric if c in BINARY_FLAGS]
+    to_scale = [c for c in numeric if c not in keep01]
 
-    names = np.array(list(encoder.get_feature_names_out(categorical)) + list(numeric))
+    scaler_class = recipe.get("scaler", StandardScaler)
+    if scaler_class is None:
+        num_train, num_test = train[to_scale].to_numpy(float), test[to_scale].to_numpy(float)
+    else:
+        scaler = scaler_class().fit(train[to_scale])
+        num_train, num_test = scaler.transform(train[to_scale]), scaler.transform(test[to_scale])
+    num_train = np.hstack([num_train, train[keep01].to_numpy(float)])
+    num_test = np.hstack([num_test, test[keep01].to_numpy(float)])
+
+    names = np.array(list(encoder.get_feature_names_out(categorical)) + to_scale + keep01)
     return (np.hstack([cat_train, num_train]),
             np.hstack([cat_test, num_test]),
             names)

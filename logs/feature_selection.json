@@ -31,13 +31,15 @@
       "spend_365d",
       "is_first_purchase",
       "purchase_year",
-      "purchase_month",
-      "purchase_day",
-      "purchase_dayofweek",
-      "purchase_quarter",
       "is_weekend",
       "customer_since_year",
-      "since_2015_or_earlier"
+      "since_2015_or_earlier",
+      "purchase_month_sin",
+      "purchase_month_cos",
+      "purchase_day_sin",
+      "purchase_day_cos",
+      "purchase_dayofweek_sin",
+      "purchase_dayofweek_cos"
     ],
     "categorical": [
       "payment_type",
@@ -72,6 +74,7 @@
     "payment_type_Maybe Tomorrow Payment 9",
     "salesperson_VLOOKUP Master 4",
     "commercial_zone_Decorative Dashboard Zone 4",
+    "document_series_Ctrl Z Series 2",
     "document_series_Ctrl Z Series 3",
     "commercial_region_Region RG23: We Will See Later",
     "commercial_region_Region RG29: We Will See Later",
@@ -98,12 +101,15 @@
     "spend_180d",
     "purchase_count_365d",
     "spend_365d",
-    "is_first_purchase",
     "purchase_year",
-    "purchase_day",
-    "purchase_quarter",
-    "is_weekend",
     "customer_since_year",
+    "purchase_month_sin",
+    "purchase_month_cos",
+    "purchase_day_sin",
+    "purchase_day_cos",
+    "purchase_dayofweek_cos",
+    "is_first_purchase",
+    "is_weekend",
     "since_2015_or_earlier"
   ]
 }
