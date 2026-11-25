@@ -3,14 +3,16 @@ import numpy as np
 import pandas as pd
 from sklearn.model_selection import TimeSeriesSplit
 
-from config import CLIENT_FILE, TRAIN_FILE, excluded, identifiers, target
+from config import MERGED_FILE, excluded, identifiers, target
 
 
 def load_data():
-    """Training purchases merged with the (clean) customer table."""
-    train = pd.read_csv(TRAIN_FILE)
-    clientes = pd.read_csv(CLIENT_FILE)
-    return train.merge(clientes, on="customer_id", how="left", validate="many_to_one")
+    """Training purchases merged with the (clean) customer table, before any preparation.
+
+    The merge is done once, in the pre-processing notebook (section 1.1), which
+    saves it as `merge_1_2.csv`.
+    """
+    return pd.read_csv(MERGED_FILE)
 
 
 def columns_type(data):

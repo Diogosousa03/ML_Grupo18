@@ -1,6 +1,6 @@
 import numpy as np
 import pandas as pd
-from sklearn.metrics import f1_score
+from sklearn.metrics import average_precision_score, f1_score
 
 
 #----------------------
@@ -51,3 +51,43 @@ def fit_with_cutoff(model, X, y):
 def baseline_rule(data):
     """The competition's baseline: a repeat purchase is predicted when purchase_count_365d >= 3."""
     return (data["purchase_count_365d"] >= 3).astype(int)
+
+
+#----------------------
+# Tuning
+#----------------------
+def score_configurations(prepared, configs, make):
+    """Fit `make(config)` for every configuration on every prepared split and score it.
+
+    `prepared` holds one (A_train, A_validation, y_train, y_validation) tuple per
+    split, already prepared by the recipe and reduced to the selected columns, so
+    every configuration is fitted on the same matrices. Each fit chooses its own
+    cut-off on its training rows. Returns one row per (configuration, split), with
+    the validation AP and the F1 at that cut-off.
+    """
+    rows = []
+    for index, config in enumerate(configs):
+        for split, (A_train, A_validation, y_train, y_validation) in enumerate(prepared):
+            model, _, cutoff = fit_with_cutoff(make(config), A_train, y_train)
+            p_validation = model.predict_proba(A_validation)[:, 1]
+            rows.append({"configuration": index, "split": split, "cut-off": cutoff,
+                         "AP": average_precision_score(y_validation, p_validation),
+                         "F1": f1_score(y_validation, p_validation >= cutoff)})
+    return pd.DataFrame(rows)
+
+
+def walk_forward(scores, first=2, metric="AP"):
+    """The search scored on splits that took no part in the choice: a nested validation in time.
+
+    `scores` is the result of `score_configurations`. For every split from `first`
+    on, the configuration with the best mean `metric` on the earlier splits is the
+    choice, and its scores on that split are kept. Returns one row per scored split.
+    """
+    wide = scores.pivot(index="split", columns="configuration", values=metric)
+    rows = []
+    for split in wide.index[first:]:
+        chosen = int(wide.loc[:split - 1].mean().idxmax())
+        row = scores[(scores["configuration"] == chosen) & (scores["split"] == split)].iloc[0]
+        rows.append({"split": split, "chosen": chosen, "AP": row["AP"], "F1": row["F1"],
+                     "cut-off": row["cut-off"]})
+    return pd.DataFrame(rows)

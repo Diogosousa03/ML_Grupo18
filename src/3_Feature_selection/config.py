@@ -8,8 +8,8 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 DATA_DIR = PROJECT_ROOT / "data"
 LOGS_DIR = PROJECT_ROOT / "logs"
 
-TRAIN_FILE = DATA_DIR / "trainDataset" / "train_2_5_1.csv"
-CLIENT_FILE = DATA_DIR / "clientesDataset" / "clientes_clean.csv"
+# Transactions merged with the customers, before any preparation (pre-processing, section 1.1)
+MERGED_FILE = DATA_DIR / "preprocessing" / "merge_1_2.csv"
 TEST_FILE = DATA_DIR / "test.csv"
 
 RANDOM_STATE = 42

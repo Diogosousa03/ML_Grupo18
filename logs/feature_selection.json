@@ -69,7 +69,7 @@
     "random_state": 42
   },
   "fitted_per_split": true,
-  "evaluation": "7 temporal splits; paired AP and F1 against the 93 candidate columns",
+  "evaluation": "7 temporal splits; paired AP and F1 against the 95 candidate columns",
   "final_features": [
     "payment_type_Maybe Tomorrow Payment 9",
     "salesperson_VLOOKUP Master 4",
