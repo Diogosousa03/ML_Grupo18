@@ -91,3 +91,23 @@ def walk_forward(scores, first=2, metric="AP"):
         rows.append({"split": split, "chosen": chosen, "AP": row["AP"], "F1": row["F1"],
                      "cut-off": row["cut-off"]})
     return pd.DataFrame(rows)
+
+
+#----------------------
+# Random Forest
+#----------------------
+def fit_forest_with_cutoff(model, X, y):
+    """Fit a random forest and choose its cut-off on the out-of-bag probabilities.
+
+    A forest predicts its own training rows almost perfectly, so a cut-off chosen on
+    the training probabilities (as `fit_with_cutoff` does for the logistic regression)
+    would be too optimistic. Each row's out-of-bag probability comes only from the
+    trees that did not see that row, so it behaves like a prediction on new rows.
+    The model must be built with `oob_score=True` and enough trees for every row to
+    be left out by some of them.
+
+    Returns the fitted model, the out-of-bag probabilities and the cut-off.
+    """
+    model = model.fit(X, y)
+    probabilities = model.oob_decision_function_[:, 1]
+    return model, probabilities, best_cutoff(y, probabilities)

@@ -1,6 +1,7 @@
 import warnings
 from collections import namedtuple
 from functools import partial
+from pathlib import Path
 
 import numpy as np
 import pandas as pd
@@ -24,9 +25,12 @@ from sklearn.preprocessing import MinMaxScaler, OneHotEncoder, RobustScaler, Sta
 # Loading the Datasets and merging the Datasets train.csv and clientes.csv
 # -------------------------------------------------------------------------
 
-trainFile = "../../data/trainDataset/train_2_5_1.csv"
-clientFile = "../../data/clientesDataset/clientes_clean.csv"
-testFile = "../../data/test.csv"
+# Built from this file's place in the project (src/3_Feature_selection/), so a notebook can
+# call load_data from any folder depth
+DATA_DIR = Path(__file__).resolve().parents[2] / "data"
+trainFile = DATA_DIR / "trainDataset" / "train_2_5_1.csv"
+clientFile = DATA_DIR / "clientesDataset" / "clientes_clean.csv"
+testFile = DATA_DIR / "test.csv"
 
 def load_data():
     train = pd.read_csv(trainFile)
